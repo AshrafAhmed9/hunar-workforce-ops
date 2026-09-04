@@ -1,0 +1,9 @@
+name: Keep backend warm
+on:
+  schedule: [{cron: '*/10 * * * *'}]
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: test -n "${{ secrets.BACKEND_HEALTH_URL }}" && curl --fail --max-time 20 "${{ secrets.BACKEND_HEALTH_URL }}" || true

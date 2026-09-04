@@ -1,0 +1,1 @@
+export function ConsentGate(){return <aside className="notice"><b>Consent gate.</b> A sourced profile cannot be dialled until an operator attaches a verified number and records consent. The API enforces this before dispatch and writes an audit entry.</aside>}
