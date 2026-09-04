@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from ..models import AuditLog, Call, Contact
+from ..models import Agent, AuditLog, Call, Contact
 
 
 class ConsentError(ValueError):
@@ -47,3 +47,35 @@ def prepare_dispatch(
     )
     db.flush()
     return call
+
+
+def call_payload(
+    agent: Agent, contact: Contact, call: Call, public_api_url: str
+) -> dict:
+    """Build only the provider fields needed for a consented, traceable call."""
+    assert contact.phone is not None
+    callback = (
+        f"{public_api_url.rstrip('/')}/webhooks/hunar" if public_api_url else None
+    )
+    payload = {
+        "agent_id": agent.hunar_agent_id,
+        "to_phone_number": contact.phone,
+        "request_id": call.request_id,
+        "retry_config": {"max_retries": 2, "retry_after_minutes": 60},
+        "guardrails": {
+            "timezone": "Asia/Kolkata",
+            "allowed_hours": "09:00-20:00",
+            "allowed_days": ["MON", "TUE", "WED", "THU", "FRI", "SAT"],
+        },
+    }
+    if callback:
+        payload["callback_config"] = {
+            "url": callback,
+            "events": [
+                "call_status_updated",
+                "call_recording_done",
+                "call_result_done",
+                "call_summary",
+            ],
+        }
+    return payload

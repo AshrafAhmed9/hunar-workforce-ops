@@ -9,7 +9,9 @@ from .config import get_settings
 from .db import Base, engine, get_db
 from .models import Agent, AuditLog, Call, Contact, Job
 from .providers.hunar import HunarClient
-from .services.dispatch import ConsentError, prepare_dispatch
+from .providers.pdl import PeopleDataProvider
+from .services.dispatch import ConsentError, call_payload, prepare_dispatch
+from .services.reconcile import reconcile_stale_calls
 from .services.schema_gen import derive_screening_schema
 from .webhooks.routes import router as webhook_router
 
@@ -139,17 +141,55 @@ async def provision_agent(body: dict, db: Session = Depends(get_db)):
     return {"id": agent.id, "hunar_agent_id": remote_id, "name": agent.name}
 
 
+@app.post("/source/search")
+async def source_search(body: dict):
+    query = str(body.get("query", "")).strip()
+    if not query:
+        raise HTTPException(422, "A provider query is required")
+    result = await PeopleDataProvider(get_settings()).search(query)
+    return {
+        "query": query,
+        "source": result.mode,
+        "reason": result.reason,
+        "people": result.people,
+    }
+
+
 @app.post("/dispatch/{contact_id}/{agent_id}")
-def dispatch(contact_id: int, agent_id: int, db: Session = Depends(get_db)):
+async def dispatch(contact_id: int, agent_id: int, db: Session = Depends(get_db)):
     contact = db.get(Contact, contact_id)
-    if not contact or not db.get(Agent, agent_id):
+    agent = db.get(Agent, agent_id)
+    if not contact or not agent:
         raise HTTPException(404, "Contact or agent not found")
+    settings = get_settings()
+    if not settings.hunar_api_key:
+        raise HTTPException(503, "HUNAR_API_KEY is required to dispatch a call")
     try:
-        call = prepare_dispatch(db, contact, agent_id, get_settings().wfo_namespace)
+        call = prepare_dispatch(db, contact, agent_id, settings.wfo_namespace)
     except ConsentError as exc:
         raise HTTPException(409, str(exc))
+    try:
+        remote = await HunarClient(settings).bulk_calls(
+            {"calls": [call_payload(agent, contact, call, settings.public_api_url)]}
+        )
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(502, f"Hunar call dispatch failed: {exc}") from exc
+    response_call = (
+        (remote.get("calls") or remote.get("data") or [{}])[0]
+        if isinstance(remote, dict)
+        else {}
+    )
+    remote_id = str(response_call.get("id") or response_call.get("call_id") or "")
+    if remote_id:
+        call.hunar_call_id = remote_id
     db.commit()
-    return {"call_id": call.id, "request_id": call.request_id, "status": "QUEUED"}
+    return {
+        "call_id": call.id,
+        "hunar_call_id": remote_id or None,
+        "request_id": call.request_id,
+        "status": "QUEUED",
+    }
 
 
 @app.get("/calls")
@@ -167,10 +207,12 @@ def calls(db: Session = Depends(get_db)):
 
 
 @app.post("/reconcile/")
-def reconcile(db: Session = Depends(get_db)):
-    stale = db.query(Call).filter(Call.status.in_(["QUEUED", "INITIATED"])).count()
-    return {
-        "checked": stale,
-        "repaired": 0,
-        "note": "Provider reconciliation runs only when HUNAR_API_KEY is configured.",
-    }
+async def reconcile(db: Session = Depends(get_db)):
+    settings = get_settings()
+    if not settings.hunar_api_key:
+        raise HTTPException(503, "HUNAR_API_KEY is required to reconcile calls")
+    try:
+        checked, repaired = await reconcile_stale_calls(db, HunarClient(settings))
+    except Exception as exc:
+        raise HTTPException(502, f"Hunar reconciliation failed: {exc}") from exc
+    return {"checked": checked, "repaired": repaired}
