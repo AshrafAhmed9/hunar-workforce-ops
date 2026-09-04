@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import Base, engine, get_db
-from .models import Agent, Call, Contact, Job
+from .models import Agent, AuditLog, Call, Contact, Job
+from .providers.hunar import HunarClient
 from .services.dispatch import ConsentError, prepare_dispatch
 from .services.schema_gen import derive_screening_schema
 from .webhooks.routes import router as webhook_router
@@ -64,15 +65,78 @@ def create_contact(body: dict, db: Session = Depends(get_db)):
         phone=body.get("phone"),
         source=body.get("source", "manual"),
         contactable=bool(body.get("phone")),
-        consent_status=body.get("consent_status", "unverified"),
-        verified_at=datetime.now(UTC).replace(tzinfo=None)
-        if body.get("consent_status") == "verified"
-        else None,
+        consent_status="unverified",
+        verified_at=None,
     )
     db.add(contact)
     db.commit()
     db.refresh(contact)
     return {"id": contact.id, "consent_status": contact.consent_status}
+
+
+@app.post("/contacts/{contact_id}/verify")
+def verify_contact(contact_id: int, body: dict, db: Session = Depends(get_db)):
+    contact = db.get(Contact, contact_id)
+    proof = str(body.get("consent_proof", "")).strip()
+    if not contact:
+        raise HTTPException(404, "Contact not found")
+    if not contact.phone or not proof:
+        raise HTTPException(422, "A phone number and consent proof are required")
+    contact.consent_status = "verified"
+    contact.verified_at = datetime.now(UTC).replace(tzinfo=None)
+    db.add(
+        AuditLog(
+            contact_id=contact.id,
+            action="consent_verified",
+            actor=str(body.get("actor", "operator")),
+            consent_proof=proof,
+        )
+    )
+    db.commit()
+    return {"id": contact.id, "consent_status": contact.consent_status}
+
+
+@app.post("/agents/provision")
+async def provision_agent(body: dict, db: Session = Depends(get_db)):
+    settings = get_settings()
+    if not settings.hunar_api_key:
+        raise HTTPException(503, "HUNAR_API_KEY is required to provision an agent")
+    name = str(body.get("name", "Screening agent")).strip()
+    schema = body.get("result_schema") or {}
+    payload = {
+        "name": f"WFO/{settings.wfo_namespace} — {name}",
+        "agent_prompt": body.get(
+            "agent_prompt", "Ask only role-relevant questions and wait for each answer."
+        ),
+        "objective": body.get("objective", "Conduct a consented hiring conversation."),
+        "introduction": body.get(
+            "introduction", "Hello, I am calling about a role you agreed to discuss."
+        ),
+        "result_prompt": "Extract only stated answers. Do not infer missing information.",
+        "result_schema": schema,
+        "language": body.get("language", "ENGLISH"),
+        "persona": body.get("persona", "NEHA"),
+    }
+    try:
+        remote = await HunarClient(settings).create_agent(payload)
+    except Exception as exc:
+        raise HTTPException(502, f"Hunar agent provisioning failed: {exc}") from exc
+    remote_id = str(remote.get("id") or remote.get("agent_id") or "")
+    if not remote_id:
+        raise HTTPException(502, "Hunar response did not include an agent ID")
+    agent = Agent(
+        job_id=body.get("job_id"),
+        hunar_agent_id=remote_id,
+        name=payload["name"],
+        namespace=settings.wfo_namespace,
+        language=payload["language"],
+        persona=payload["persona"],
+        result_schema=schema,
+    )
+    db.add(agent)
+    db.commit()
+    db.refresh(agent)
+    return {"id": agent.id, "hunar_agent_id": remote_id, "name": agent.name}
 
 
 @app.post("/dispatch/{contact_id}/{agent_id}")

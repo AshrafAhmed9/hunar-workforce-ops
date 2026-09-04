@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     webhook_max_age_seconds: int = 300
     pdl_api_key: str = ""
     frontend_origin: str = "http://localhost:3000"
+    public_api_url: str = ""
 
     def require_hunar(self) -> None:
         if not self.hunar_api_key:
