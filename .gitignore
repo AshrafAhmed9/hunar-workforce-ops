@@ -11,3 +11,6 @@ dist/
 *.db
 *.tsbuildinfo
 .neon
+.agents/
+.claude/
+skills-lock.json
