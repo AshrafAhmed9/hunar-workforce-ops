@@ -16,6 +16,8 @@ cd frontend && npm install && npm run dev
 
 The frontend is at `http://localhost:3000`; the API documentation is at `http://localhost:8000/docs`. The app still runs in a local demonstration mode without provider credentials, but provider calls fail explicitly rather than silently producing fabricated outcomes.
 
+`render.yaml` and `backend/Dockerfile` provide the backend deployment contract. Configure `PUBLIC_API_URL` to the deployed HTTPS backend before provisioning live calls so signed webhooks return to the correct endpoint. Set `NEXT_PUBLIC_API_URL` in the frontend host to that same API origin. The endpoint list is in [docs/api.md](docs/api.md).
+
 ## Decisions that matter
 
 A sourced profile is not dialable. People-data providers may indicate contactability, but an operator must add a verified phone number and record consent before dispatch. The backend enforces this condition and records every requested dial in an audit log.

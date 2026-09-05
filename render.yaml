@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: hunar-workforce-ops-api
+    runtime: docker
+    rootDir: backend
+    healthCheckPath: /health/
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: HUNAR_API_KEY
+        sync: false
+      - key: PDL_API_KEY
+        sync: false
+      - key: WFO_NAMESPACE
+        generateValue: true
+      - key: PUBLIC_API_URL
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
