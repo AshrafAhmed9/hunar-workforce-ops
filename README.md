@@ -2,6 +2,12 @@
 
 Hunar Workforce Ops is a consent-first voice operations app for three HR tasks: job-description-led candidate screening, people sourcing with an explicit verification boundary, and feature-phone-friendly frontline attendance. It keeps completed and unsuccessful calls in the same operational view rather than treating no-connects as missing data.
 
+**Live app:** https://hunar-workforce-ops.vercel.app
+**API:** https://hunar-workforce-ops-api.onrender.com (`/health/`, `/docs`)
+**Repo:** https://github.com/AshrafAhmed9/hunar-workforce-ops
+
+The Screen → provision → consent → dispatch → webhook → Proof path has been run end to end against the live Hunar API from the deployed app, not just against mocks — see `docs/spike.md`.
+
 ## Run it
 
 Copy `.env.example` to `.env`, set `HUNAR_API_KEY` for live provider operations, then run the backend and frontend separately:
