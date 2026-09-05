@@ -1,1 +1,48 @@
-export function Funnel(){const rows=[["Queued",12,""],["Connected",6,"ok"],["Completed",4,"ok"],["Not connected",5,"warn"]];return <section className="panel"><h2>Outcome funnel</h2><div className="funnel" aria-label="Call outcome funnel">{rows.map(([label,value,kind])=><div className={String(kind)} key={String(label)}>{label}: <b>{value}</b></div>)}</div><p className="lede">Counts are local operational data. No-connects remain visible; they are not treated as missing data.</p></section>}
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Call = { status: string };
+const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const stages: [label: string, statuses: string[], kind: string][] = [
+  ["Queued", ["NOT_STARTED", "SCHEDULED", "INITIATED", "RINGING", "IN_PROGRESS", "QUEUED"], ""],
+  ["Completed", ["COMPLETED"], "ok"],
+  ["Not connected", ["NOT_CONNECTED"], "warn"],
+  ["Failed", ["FAILED", "CANCELLED"], "bad"],
+];
+
+export function Funnel() {
+  const [calls, setCalls] = useState<Call[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${api}/calls`)
+      .then(response => (response.ok ? response.json() : Promise.reject()))
+      .then((data: Call[]) => { if (!cancelled) setCalls(data); })
+      .catch(() => { if (!cancelled) setCalls([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const total = calls?.length ?? 0;
+  const rows = stages.map(([label, statuses, kind]) => {
+    const count = calls?.filter(c => statuses.includes(c.status)).length ?? 0;
+    return { label, count, kind, pct: total > 0 ? Math.round((count / total) * 100) : 0 };
+  });
+
+  return (
+    <section className="panel">
+      <h2>Outcome funnel</h2>
+      {calls === null && <p className="lede" aria-live="polite">Loading call outcomes…</p>}
+      {calls !== null && total === 0 && <p className="lede">No calls have been dispatched through this app yet.</p>}
+      {total > 0 && (
+        <div className="funnel" aria-label="Call outcome funnel">
+          {rows.map(row => (
+            <div key={row.label} className={row.kind} style={{ width: `${Math.max(row.pct, 6)}%` }}>
+              {row.label}: <b>{row.count}</b>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="lede">Counts are read live from this application&rsquo;s database. No-connects and failures remain visible; they are not treated as missing data.</p>
+    </section>
+  );
+}

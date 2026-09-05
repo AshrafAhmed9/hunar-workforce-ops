@@ -1,1 +1,32 @@
-export default function Rollcall(){const rows=[['Whitefield warehouse','86','82','4','Supervisor review'],['Peenya hub','54','53','1','One late arrival'],['Hosur line','71','71','0','—']];return <main><p className="eyebrow">Rollcall · Q3</p><h1>Attendance is a ledger, not a thousand outbound calls.</h1><p className="lede">Workers check in by missed call from a registered SIM; a local-language callback confirms presence. Supervisors reconcile exceptions.</p><section className="panel"><h2>Today’s site ledger</h2><table><thead><tr><th>Site</th><th>Roster</th><th>Present</th><th>Exceptions</th><th>Next action</th></tr></thead><tbody>{rows.map(r=><tr key={r[0]}>{r.map((c,i)=><td key={i}>{c}</td>)}</tr>)}</tbody></table></section><section className="notice"><b>Hindi roll-call agent:</b> result fields are present, absent, late, confirmed headcount, and exceptions. It supports a supervisor confirmation path; it does not make identity decisions on its own.</section><p>Read the complete operating design and cost model in <a href="/attendance.md">attendance.md</a>.</p></main>}
+export default function Rollcall() {
+  const rows = [
+    ["Whitefield warehouse", "86", "82", "4", "Supervisor review"],
+    ["Peenya hub", "54", "53", "1", "One late arrival"],
+    ["Hosur line", "71", "71", "0", "—"],
+  ];
+  return (
+    <main>
+      <p className="eyebrow">Rollcall · Q3</p>
+      <h1>Attendance is a ledger, not a thousand outbound calls.</h1>
+      <p className="lede">Workers check in by missed call from a registered SIM; a local-language callback confirms presence. Supervisors reconcile exceptions.</p>
+      <section className="panel">
+        <h2>Illustrative site ledger</h2>
+        <p className="lede">Sample data — this app does not yet run a live attendance endpoint. The Hindi roll-call agent below is real and callable; this table shows the shape of the ledger it would populate.</p>
+        <table>
+          <thead>
+            <tr><th>Site</th><th>Roster</th><th>Present</th><th>Exceptions</th><th>Next action</th></tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r[0]}>{r.map((c, i) => <td key={i}>{c}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <section className="notice">
+        <b>Hindi roll-call agent:</b> result fields are present, absent, late, confirmed headcount, and exceptions. It supports a supervisor confirmation path; it does not make identity decisions on its own.
+      </section>
+      <p>Read the complete operating design and cost model in <a href="/attendance.md">attendance.md</a>.</p>
+    </main>
+  );
+}
