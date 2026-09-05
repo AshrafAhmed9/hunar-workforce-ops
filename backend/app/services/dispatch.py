@@ -63,7 +63,9 @@ def call_payload(
     payload: dict = {
         "agent_id": agent.hunar_agent_id,
         "request_id": call.request_id,
-        "retry_config": {"max_retry_count": 2, "retry_interval_hours": 1},
+        # Hunar enforces retry_interval_hours in {3, 6, 9, 12, 24} despite the
+        # OpenAPI schema stating an open 0-24 integer range - confirmed via live 422.
+        "retry_config": {"max_retry_count": 2, "retry_interval_hours": 6},
         "guardrails": {
             "allowed_days": ["MON", "TUE", "WED", "THU", "FRI", "SAT"],
             "earliest_call_time": "09:00",

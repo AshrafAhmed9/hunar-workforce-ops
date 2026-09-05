@@ -27,7 +27,7 @@ def test_dispatch_payload_matches_hunar_bulk_call_schema() -> None:
     assert payload["data"] == [
         {"callee_name": "A", "mobile_number": "+919999999999", "custom_data": {}}
     ]
-    assert payload["retry_config"] == {"max_retry_count": 2, "retry_interval_hours": 1}
+    assert payload["retry_config"] == {"max_retry_count": 2, "retry_interval_hours": 6}
     assert payload["guardrails"]["earliest_call_time"] == "09:00"
     assert payload["guardrails"]["last_call_time"] == "20:00"
     assert (
