@@ -52,30 +52,37 @@ def prepare_dispatch(
 def call_payload(
     agent: Agent, contact: Contact, call: Call, public_api_url: str
 ) -> dict:
-    """Build only the provider fields needed for a consented, traceable call."""
+    """Build a Hunar BulkCallCreateSchema-shaped request for a single consented call.
+
+    Field names and nesting must match https://api.voice.hunar.ai/docs/external/
+    exactly — Hunar rejects unknown/misshaped fields with a 422, and the outer
+    request carries provider-level fields (agent_id, retry_config, guardrails,
+    callback_config) once, with recipient data in a separate "data" array.
+    """
     assert contact.phone is not None
-    callback = (
-        f"{public_api_url.rstrip('/')}/webhooks/hunar" if public_api_url else None
-    )
-    payload = {
+    payload: dict = {
         "agent_id": agent.hunar_agent_id,
-        "to_phone_number": contact.phone,
         "request_id": call.request_id,
-        "retry_config": {"max_retries": 2, "retry_after_minutes": 60},
+        "retry_config": {"max_retry_count": 2, "retry_interval_hours": 1},
         "guardrails": {
-            "timezone": "Asia/Kolkata",
-            "allowed_hours": "09:00-20:00",
             "allowed_days": ["MON", "TUE", "WED", "THU", "FRI", "SAT"],
+            "earliest_call_time": "09:00",
+            "last_call_time": "20:00",
         },
+        "data": [
+            {
+                "callee_name": contact.name,
+                "mobile_number": contact.phone,
+                "custom_data": {},
+            }
+        ],
     }
-    if callback:
+    if public_api_url:
+        webhook_url = f"{public_api_url.rstrip('/')}/webhooks/hunar"
         payload["callback_config"] = {
-            "url": callback,
-            "events": [
-                "call_status_updated",
-                "call_recording_done",
-                "call_result_done",
-                "call_summary",
-            ],
+            "call_status_callback_url": webhook_url,
+            "call_recording_callback_url": webhook_url,
+            "call_result_callback_url": webhook_url,
+            "call_summary_callback_url": webhook_url,
         }
     return payload

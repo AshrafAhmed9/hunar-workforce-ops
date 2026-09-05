@@ -16,14 +16,28 @@ def test_source_falls_back_to_explicit_fixtures_without_key() -> None:
     assert "PDL_API_KEY" in result.reason
 
 
-def test_dispatch_payload_has_namespace_safe_callback_and_guardrails() -> None:
+def test_dispatch_payload_matches_hunar_bulk_call_schema() -> None:
+    """Field names must match BulkCallCreateSchema exactly - Hunar 422s on any mismatch."""
     agent = Agent(hunar_agent_id="agent-1", name="WFO/demo", namespace="demo")
     contact = Contact(name="A", phone="+919999999999")
     call = Call(hunar_call_id="pending-1", request_id="demo-1")
     payload = call_payload(agent, contact, call, "https://api.example.com/")
+    assert payload["agent_id"] == "agent-1"
     assert payload["request_id"] == "demo-1"
-    assert payload["callback_config"]["url"] == "https://api.example.com/webhooks/hunar"
-    assert payload["retry_config"]["max_retries"] == 2
+    assert payload["data"] == [
+        {"callee_name": "A", "mobile_number": "+919999999999", "custom_data": {}}
+    ]
+    assert payload["retry_config"] == {"max_retry_count": 2, "retry_interval_hours": 1}
+    assert payload["guardrails"]["earliest_call_time"] == "09:00"
+    assert payload["guardrails"]["last_call_time"] == "20:00"
+    assert (
+        payload["callback_config"]["call_status_callback_url"]
+        == "https://api.example.com/webhooks/hunar"
+    )
+    assert (
+        payload["callback_config"]["call_summary_callback_url"]
+        == "https://api.example.com/webhooks/hunar"
+    )
 
 
 def test_reconciliation_only_updates_fields_supplied_by_provider() -> None:

@@ -120,6 +120,7 @@ async def provision_agent(body: dict, db: Session = Depends(get_db)):
         raise HTTPException(503, "HUNAR_API_KEY is required to provision an agent")
     name = str(body.get("name", "Screening agent")).strip()
     schema = body.get("result_schema") or {}
+    persona = body.get("persona", "NEHA")
     payload = {
         "name": f"WFO/{settings.wfo_namespace} — {name}",
         "agent_prompt": body.get(
@@ -132,7 +133,7 @@ async def provision_agent(body: dict, db: Session = Depends(get_db)):
         "result_prompt": "Extract only stated answers. Do not infer missing information.",
         "result_schema": schema,
         "language": body.get("language", "ENGLISH"),
-        "persona": body.get("persona", "NEHA"),
+        "voice_persona": persona,
     }
     try:
         remote = await HunarClient(settings).create_agent(payload)
@@ -147,7 +148,7 @@ async def provision_agent(body: dict, db: Session = Depends(get_db)):
         name=payload["name"],
         namespace=settings.wfo_namespace,
         language=payload["language"],
-        persona=payload["persona"],
+        persona=persona,
         result_schema=schema,
     )
     db.add(agent)
@@ -185,16 +186,17 @@ async def dispatch(contact_id: int, agent_id: int, db: Session = Depends(get_db)
         raise HTTPException(409, str(exc))
     try:
         remote = await HunarClient(settings).bulk_calls(
-            {"calls": [call_payload(agent, contact, call, settings.public_api_url)]}
+            call_payload(agent, contact, call, settings.public_api_url)
         )
     except Exception as exc:
         db.rollback()
         raise HTTPException(502, f"Hunar call dispatch failed: {exc}") from exc
-    response_call = (
-        (remote.get("calls") or remote.get("data") or [{}])[0]
-        if isinstance(remote, dict)
-        else {}
-    )
+    if isinstance(remote, list):
+        response_call = remote[0] if remote else {}
+    elif isinstance(remote, dict):
+        response_call = (remote.get("calls") or remote.get("data") or remote.get("results") or [{}])[0]
+    else:
+        response_call = {}
     remote_id = str(response_call.get("id") or response_call.get("call_id") or "")
     if remote_id:
         call.hunar_call_id = remote_id

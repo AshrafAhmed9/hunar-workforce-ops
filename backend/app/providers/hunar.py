@@ -23,7 +23,7 @@ class HunarClient:
             response.raise_for_status()
             return response.json()
 
-    async def bulk_calls(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def bulk_calls(self, payload: dict[str, Any]) -> Any:
         async with httpx.AsyncClient(
             base_url=self.settings.hunar_base_url, timeout=20
         ) as client:
