@@ -113,6 +113,14 @@ def verify_contact(contact_id: int, body: dict, db: Session = Depends(get_db)):
     return {"id": contact.id, "consent_status": contact.consent_status}
 
 
+@app.get("/agents")
+def list_agents(db: Session = Depends(get_db)):
+    return [
+        {"id": a.id, "name": a.name, "language": a.language, "result_schema": a.result_schema}
+        for a in db.query(Agent).order_by(Agent.created_at.desc()).all()
+    ]
+
+
 @app.post("/agents/provision")
 async def provision_agent(body: dict, db: Session = Depends(get_db)):
     settings = get_settings()
