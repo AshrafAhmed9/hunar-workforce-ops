@@ -36,8 +36,9 @@ export function Funnel() {
       {total > 0 && (
         <div className="funnel" aria-label="Call outcome funnel">
           {rows.map(row => (
-            <div key={row.label} className={row.kind} style={{ width: `${Math.max(row.pct, 6)}%` }}>
-              {row.label}: <b>{row.count}</b>
+            <div key={row.label} className={`funnel-row ${row.kind}`}>
+              <div className="funnel-meter" style={{ width: `${Math.max(row.pct, row.count > 0 ? 4 : 0)}%` }} />
+              <span className="funnel-label">{row.label}: <b>{row.count}</b></span>
             </div>
           ))}
         </div>

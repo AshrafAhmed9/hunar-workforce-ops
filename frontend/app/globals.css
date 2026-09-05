@@ -121,24 +121,40 @@ tbody tr:hover{background:var(--paper)}
 .warn{color:var(--warn)}
 .bad{color:var(--red)}
 
-.funnel{display:grid;gap:1px;background:var(--line)}
-.funnel div{
+.funnel{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line)}
+.funnel-row{
+  position:relative;
   background:var(--panel);
   min-height:34px;
-  padding:6px 12px;
-  font-size:12px;
-  font-variant-numeric:tabular-nums;
+  border-left:4px solid var(--line-soft);
+  overflow:hidden;
+}
+.funnel-row.ok{border-left-color:var(--ok)}
+.funnel-row.warn{border-left-color:var(--warn)}
+.funnel-row.bad{border-left-color:var(--red)}
+.funnel-meter{
+  position:absolute;
+  inset:0 auto 0 0;
+  background:var(--line-soft);
+  opacity:.35;
+  transition:width .3s ease;
+}
+.funnel-row.ok .funnel-meter{background:var(--ok)}
+.funnel-row.warn .funnel-meter{background:var(--warn)}
+.funnel-row.bad .funnel-meter{background:var(--red)}
+.funnel-label{
+  position:relative;
+  z-index:1;
   display:flex;
   align-items:center;
   justify-content:space-between;
+  height:100%;
+  padding:6px 12px;
+  font-size:12px;
+  font-variant-numeric:tabular-nums;
   text-transform:uppercase;
   letter-spacing:.04em;
-  transition:width .3s ease;
-  border-left:4px solid var(--line-soft);
 }
-.funnel div.ok{border-left-color:var(--ok)}
-.funnel div.warn{border-left-color:var(--warn)}
-.funnel div.bad{border-left-color:var(--red)}
 
 .notice{border:2px solid var(--line);border-left:6px solid var(--red);padding:12px 14px;background:var(--panel);color:var(--ink);font-size:12px}
 .notice b{text-transform:uppercase;letter-spacing:.04em}
