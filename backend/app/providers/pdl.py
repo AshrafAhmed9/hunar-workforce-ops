@@ -63,12 +63,34 @@ class PeopleDataProvider:
                 response.raise_for_status()
                 records = response.json().get("data", [])
         except (httpx.HTTPError, ValueError):
+            return await self._sandbox_or_fixtures(query, headers)
+        return SearchResult("live", "PDL live search", self._people(records))
+
+    async def _sandbox_or_fixtures(
+        self, query: str, headers: dict[str, str]
+    ) -> SearchResult:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(
+                    "https://sandbox.api.peopledatalabs.com/v5/person/search",
+                    params={"sql": query, "size": 10},
+                    headers=headers,
+                )
+                response.raise_for_status()
+                records = response.json().get("data", [])
+        except (httpx.HTTPError, ValueError):
             return SearchResult(
                 "fixtures",
-                "PDL live search unavailable; showing local fixtures",
+                "PDL live and sandbox search unavailable; showing local fixtures",
                 FIXTURES,
             )
-        people = [
+        return SearchResult(
+            "sandbox", "PDL sandbox — synthetic data", self._people(records)
+        )
+
+    @staticmethod
+    def _people(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [
             {
                 "id": str(item.get("id", "")),
                 "name": item.get("full_name", "Unknown"),
@@ -80,4 +102,3 @@ class PeopleDataProvider:
             }
             for item in records
         ]
-        return SearchResult("live", "PDL live search", people)
