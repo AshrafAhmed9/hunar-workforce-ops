@@ -104,7 +104,10 @@ export default function Screen() {
           <label htmlFor="phone">Verified phone</label>
           <input id="phone" type="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="+919999999999…" />
           <label htmlFor="consentProof">Consent proof</label>
-          <input id="consentProof" value={consentProof} onChange={event => setConsentProof(event.target.value)} placeholder="Source and timestamp of recorded consent…" />
+          <p className="lede">
+            Free text, not a checkbox — this is what the app writes to the audit log as evidence a real human agreed to be called. There is no automated verification of it; that is deliberate, since only a person can attest to a real conversation. Example: <i>&ldquo;candidate replied yes to outreach WhatsApp message, 2026-09-05&rdquo;</i>.
+          </p>
+          <input id="consentProof" value={consentProof} onChange={event => setConsentProof(event.target.value)} placeholder="candidate replied yes to outreach WhatsApp message, 2026-09-05" />
           <button onClick={addAndVerifyCandidate} disabled={pending === "verify"}>{pending === "verify" ? "Recording…" : "Record consent"}</button>
           {contactId && <button onClick={dispatch} disabled={pending === "dispatch"}>{pending === "dispatch" ? "Dispatching…" : "Dispatch consented call"}</button>}
         </section>

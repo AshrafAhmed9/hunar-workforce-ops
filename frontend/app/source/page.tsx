@@ -29,7 +29,8 @@ function ConsentRow({ name }: { name: string }) {
       <label htmlFor={`phone-${name}`}>Verified phone</label>
       <input id={`phone-${name}`} type="tel" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+919999999999…" />
       <label htmlFor={`consent-${name}`}>Consent proof</label>
-      <input id={`consent-${name}`} value={consentProof} onChange={e => setConsentProof(e.target.value)} placeholder="Source and timestamp of recorded consent…" />
+      <p className="lede">Free text written to the audit log as evidence a real person agreed to be called. Not automatically checked — only a human can attest to a real conversation. Example: <i>&ldquo;candidate replied yes to outreach WhatsApp message, 2026-09-05&rdquo;</i>.</p>
+      <input id={`consent-${name}`} value={consentProof} onChange={e => setConsentProof(e.target.value)} placeholder="candidate replied yes to outreach WhatsApp message, 2026-09-05" />
       <button onClick={submit} disabled={pending}>{pending ? "Recording…" : "Record consent"}</button>
       {status && <p className="status ok" aria-live="polite">{status}</p>}
     </div>
