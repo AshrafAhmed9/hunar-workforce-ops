@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from .config import get_settings
@@ -10,6 +11,7 @@ from .db import Base, engine, get_db
 from .models import Agent, AuditLog, Call, Contact, Job
 from .providers.hunar import HunarClient
 from .providers.pdl import PeopleDataProvider
+from .rate_limit import SlidingWindowLimiter
 from .services.dispatch import ConsentError, call_payload, prepare_dispatch
 from .services.reconcile import reconcile_stale_calls
 from .services.schema_gen import derive_screening_schema
@@ -23,6 +25,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Hunar Workforce Ops", version="1.0.0", lifespan=lifespan)
+limiter = SlidingWindowLimiter(get_settings().rate_limit_per_minute)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[get_settings().frontend_origin],
@@ -30,6 +33,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(webhook_router)
+
+
+@app.middleware("http")
+async def limit_public_requests(request: Request, call_next):
+    if request.url.path.startswith(("/docs", "/openapi.json", "/health/")):
+        return await call_next(request)
+    client = request.client.host if request.client else "unknown"
+    if not limiter.allow(client):
+        return JSONResponse(
+            {"detail": "Rate limit exceeded. Try again shortly."}, status_code=429
+        )
+    return await call_next(request)
 
 
 @app.get("/health/")

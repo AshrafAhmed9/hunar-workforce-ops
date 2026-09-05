@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     pdl_api_key: str = ""
     frontend_origin: str = "http://localhost:3000"
     public_api_url: str = ""
+    rate_limit_per_minute: int = 60
 
     def require_hunar(self) -> None:
         if not self.hunar_api_key:
